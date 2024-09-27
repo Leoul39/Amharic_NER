@@ -1,1 +1,15 @@
 .venv
+
+.env
+
+data
+
+*.whl
+
+*.pt
+
+*.session
+
+*.txt
+
+*.csv
