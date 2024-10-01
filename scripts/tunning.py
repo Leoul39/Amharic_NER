@@ -55,3 +55,105 @@ class Prepocess:
                                   })
 
       return final_datasets
+
+
+
+class Tunning:
+  def compute_metrics(self, eval_prediction):
+      predictions, labels = eval_prediction
+      predictions = np.argmax(predictions, axis=2)
+
+
+      # Remove ignored index (special tokens)
+      true_predictions = [
+          [label_list[p] for (p, l) in zip(prediction, label) if l != -100]
+          for prediction, label in zip(predictions, labels)
+      ]
+      true_labels = [
+          [label_list[l] for (p, l) in zip(prediction, label) if l != -100]
+          for prediction, label in zip(predictions, labels)
+      ]
+
+
+      return {
+          "precision": precision_score(true_labels, true_predictions),
+          "recall": recall_score(true_labels, true_predictions),
+          "f1": f1_score(true_labels, true_predictions),
+      }
+
+  def tokenize_and_align_labels(self,examples):
+      tokenized_inputs = tokenizer(
+          examples["tokens"], truncation=True, is_split_into_words=True, padding=True
+      )
+      labels = []
+      for i, label in enumerate(examples["ner_tags"]):
+          word_ids = tokenized_inputs.word_ids(batch_index=i)
+          previous_word_idx = None
+          label_ids = []
+          for word_idx in word_ids:
+              if word_idx is None:
+                  label_ids.append(-100)
+              elif word_idx != previous_word_idx:
+                  label_ids.append(label[word_idx])
+              else:
+                  label_ids.append(-100)
+              previous_word_idx = word_idx
+          labels.append(label_ids)
+      tokenized_inputs["labels"] = labels
+      return tokenized_inputs
+
+
+
+  def data_collator(self, data):
+      input_ids = [torch.tensor(item["input_ids"]) for item in data]
+      attention_mask = [torch.tensor(item["attention_mask"]) for item in data]
+      labels = [torch.tensor(item["labels"]) for item in data]
+
+
+      input_ids = torch.nn.utils.rnn.pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
+      attention_mask = torch.nn.utils.rnn.pad_sequence(attention_mask, batch_first=True, padding_value=0)
+      labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True, padding_value=-100)
+
+
+      return {
+          "input_ids": input_ids,
+          "attention_mask": attention_mask,
+          "labels": labels,
+      }
+
+  def tokenize_train_args(self, datasets, save_strategy = 'epoch',epochs=1, eval_strategy='epoch'):
+      self.tokenized_datasets = datasets.map(self.tokenize_and_align_labels, batched=True)
+
+
+      self.training_args = TrainingArguments(
+          output_dir="./results",
+          evaluation_strategy=eval_strategy,
+          save_strategy=save_strategy,
+          eval_steps=500,
+          save_steps=500,
+          num_train_epochs=epochs,
+          per_device_train_batch_size=8,
+          per_device_eval_batch_size=8,
+          logging_dir="./logs",
+          logging_strategy='epoch',
+          logging_steps=100,
+          learning_rate=5e-5,
+          load_best_model_at_end=True,
+          metric_for_best_model="f1",
+      )
+
+
+
+  def train(self, tokenizer, model):
+      trainer = Trainer(
+          model=model,
+
+          args=self.training_args,
+          train_dataset=self.tokenized_datasets["train"],
+          eval_dataset=self.tokenized_datasets["validation"],
+          data_collator=self.data_collator,
+          tokenizer=tokenizer,
+          compute_metrics=self.compute_metrics,
+      )
+
+      return trainer
