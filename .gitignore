@@ -20,6 +20,7 @@ photos
 
 __pycache__
 
+conll_output.conll
 labeled_conll_data.conll
 
 Models
