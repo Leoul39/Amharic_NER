@@ -14,13 +14,13 @@ photos
 
 *.session
 
-*.txt
 
 *.csv
 
 __pycache__
 
 conll_output.conll
+conll_output.txt
 labeled_conll_data.conll
 
 Models
