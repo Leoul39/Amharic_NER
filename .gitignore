@@ -2,7 +2,11 @@
 
 .env
 
-data
+output_data.json
+
+scraped_message_id.json
+
+photos
 
 *.whl
 
@@ -13,3 +17,10 @@ data
 *.txt
 
 *.csv
+
+__pycache__
+
+conll_output.conll
+labeled_conll_data.conll
+
+Models
