@@ -16,6 +16,9 @@ Make sure you have the following installed:
   * Python 3.x
   * Pip (Python package manager)
 
+### Running notebooks:
+- It is better to run the notebooks on Colab
+  
 ### Installation
 Clone the repository:
 ```
